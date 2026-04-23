@@ -229,6 +229,43 @@
   .hero-left > *:nth-child(4) { animation-delay: 0.4s; }
   .hero-visual { animation: fadeUp 0.8s 0.35s ease both; }
 
+  /* ── PHOTO TEASER ── */
+  .photo-preview-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.5rem;
+  }
+  .photo-preview-item {
+    border-radius: 10px; overflow: hidden; aspect-ratio: 4/3;
+    border: 1px solid var(--border); cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s; background: var(--parchment);
+  }
+  .photo-preview-item:hover { transform: scale(1.02); box-shadow: 0 6px 20px rgba(74,46,20,0.12); }
+  .photo-preview-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .gallery-cta { margin-top: 0.5rem; }
+  .gallery-cta-btn {
+    display: flex; align-items: center; gap: 1.2rem;
+    background: #fff; border: 1px solid var(--border); border-radius: 12px;
+    padding: 1.2rem 1.5rem; text-decoration: none; color: var(--text-main);
+    transition: all 0.2s; max-width: 420px;
+  }
+  .gallery-cta-btn:hover { border-color: var(--border-strong); box-shadow: 0 4px 16px rgba(74,46,20,0.08); transform: translateY(-2px); }
+  .gallery-cta-icon { font-size: 28px; }
+  .gallery-cta-title { font-family: 'Lora', serif; font-size: 1rem; font-weight: 600; color: var(--deep-brown); margin-bottom: 2px; }
+  .gallery-cta-sub { font-size: 12.5px; color: var(--text-light); }
+  .gallery-cta-arrow { font-size: 18px; color: var(--terracotta); margin-left: auto; }
+  .photo-preview-empty { text-align: center; padding: 2.5rem; color: var(--text-light); font-size: 14px; background: rgba(250,246,239,0.7); border: 1.5px dashed var(--border); border-radius: 12px; }
+
+  /* ── VIEW MORE BUTTONS ── */
+  .view-more-wrap {
+    display: none; justify-content: center; margin-top: 2rem;
+  }
+  .view-more-btn {
+    background: transparent; border: 1.5px solid var(--border-strong);
+    color: var(--warm-brown); border-radius: 6px; padding: 10px 28px;
+    font-family: 'DM Sans', sans-serif; font-size: 13.5px; font-weight: 500;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .view-more-btn:hover { background: var(--parchment); border-color: var(--terracotta); color: var(--terracotta); }
+
   @media (max-width: 768px) {
     .hero-inner, .about-grid, .contact-grid { grid-template-columns: 1fr; }
     .music-grid { grid-template-columns: 1fr; }
@@ -237,9 +274,9 @@
     nav { padding: 0 1rem; }
     .nav-links { gap: 1rem; }
     .nav-links a { font-size: 11px; }
-    .photo-grid { columns: 2; }
+    .photo-preview-grid { grid-template-columns: repeat(3, 1fr); }
   }
-  @media (max-width: 480px) { .photo-grid { columns: 1; } }
+  @media (max-width: 480px) { .photo-preview-grid { grid-template-columns: repeat(2, 1fr); } }
 </style>
 </head>
 <body>
@@ -277,7 +314,7 @@
     <li><a href="#research">Research</a></li>
     <li><a href="#music">Music</a></li>
     <li><a href="#blog">Blog</a></li>
-    <li><a href="#photos">Photos</a></li>
+    <li><a href="gallery.html">Photos</a></li>
     <li><a href="#journal">Journal</a></li>
     <li><a href="#contact">Contact</a></li>
     <li><button class="nav-auth-btn" id="nav-auth-btn" onclick="openAuth()">Owner Login</button></li>
@@ -387,16 +424,20 @@
     <div class="blog-grid" id="blog-grid">
       <div class="blog-loading">Loading posts…</div>
     </div>
+    <div class="view-more-wrap" id="blog-view-more-wrap">
+      <button class="view-more-btn" id="blog-view-more-btn" onclick="toggleAllBlogs()">View all posts →</button>
+    </div>
   </div>
 </section>
 
-<!-- ══ PHOTOGRAPHY ══ -->
-<section class="section" id="photos">
+<!-- ══ PHOTOGRAPHY TEASER ══ -->
+<section class="section" id="photos" style="background:var(--parchment)">
   <div class="section-inner">
     <div class="section-label">Photography</div>
     <h2 class="section-title">Through My Lens</h2>
     <p class="section-subtitle">Medicine sharpens the eye for detail. Here is what I see when I step away from the wards — moments, places, and quiet observations captured in light.</p>
 
+    <!-- Admin upload shortcut -->
     <div class="photo-upload-zone" id="upload-zone">
       <input type="file" accept="image/*" multiple id="photo-input" onchange="handlePhotoUpload(event)" />
       <div class="upload-icon">📷</div>
@@ -406,19 +447,25 @@
       <div class="upload-progress" id="upload-progress"></div>
     </div>
 
-    <div class="photo-filters">
-      <button class="filter-btn active" onclick="filterPhotos('all',this)">All</button>
-      <button class="filter-btn" onclick="filterPhotos('nature',this)">Nature</button>
-      <button class="filter-btn" onclick="filterPhotos('clinical',this)">Clinical</button>
-      <button class="filter-btn" onclick="filterPhotos('travel',this)">Travel</button>
-      <button class="filter-btn" onclick="filterPhotos('music',this)">Music</button>
-      <button class="filter-btn" onclick="filterPhotos('people',this)">People</button>
-      <button class="filter-btn" onclick="filterPhotos('animals',this)">Animals</button>
+    <!-- Preview grid — latest 6 photos -->
+    <div class="photo-preview-grid" id="photo-preview-grid"></div>
 
+    <!-- CTA to full gallery -->
+    <div class="gallery-cta" id="gallery-cta" style="display:none;">
+      <a href="gallery.html" class="gallery-cta-btn">
+        <span class="gallery-cta-icon">🖼️</span>
+        <div>
+          <div class="gallery-cta-title">View Full Gallery</div>
+          <div class="gallery-cta-sub" id="gallery-cta-sub">See all photographs</div>
+        </div>
+        <span class="gallery-cta-arrow">→</span>
+      </a>
     </div>
 
-    <div class="photo-grid" id="photo-grid">
-      <div class="photo-empty" id="photo-empty"><div class="empty-icon">🖼️</div><p>No photos yet.</p></div>
+    <!-- Empty state for visitors -->
+    <div class="photo-preview-empty" id="photo-preview-empty" style="display:none;">
+      <div style="font-size:36px;opacity:0.3;margin-bottom:0.8rem;">📷</div>
+      <p>No photographs yet — check back soon.</p>
     </div>
   </div>
 </section>
@@ -448,6 +495,9 @@
 
     <div class="journal-entries" id="journal-entries">
       <div class="blog-loading">Loading entries…</div>
+    </div>
+    <div class="view-more-wrap" id="journal-view-more-wrap">
+      <button class="view-more-btn" id="journal-view-more-btn" onclick="toggleAllJournal()">View all entries →</button>
     </div>
   </div>
 </section>
@@ -553,23 +603,60 @@ function clearAdmin() {
 // ── BLOG ──
 const thumbEmojis = ['🫀','🧠','🔬','🎶','🌿','📖','💊','🩺'];
 const thumbClasses = ['t1','t2','t3','t4','t1','t2','t3','t4'];
+const BLOG_PREVIEW_COUNT = 4;
+let allBlogPosts = [];
+let showingAllBlogs = false;
+
 async function loadBlog() {
-  const grid = document.getElementById('blog-grid');
   const { data, error } = await sb.from('blog_posts').select('*').order('created_at', { ascending: false });
-  if (error || !data || data.length === 0) {
-    grid.innerHTML = '<div class="blog-loading" style="color:var(--text-light)">No posts yet — check back soon.</div>'; return;
+  allBlogPosts = (!error && data) ? data : [];
+  renderBlog();
+}
+function renderBlog() {
+  const grid = document.getElementById('blog-grid');
+  const viewMoreWrap = document.getElementById('blog-view-more-wrap');
+  if (allBlogPosts.length === 0) {
+    grid.innerHTML = '<div class="blog-loading" style="color:var(--text-light)">No posts yet — check back soon.</div>';
+    if (viewMoreWrap) viewMoreWrap.style.display = 'none';
+    return;
   }
-  grid.innerHTML = data.map((p, i) => `
-    <div class="blog-card" style="position:relative;">
+  const posts = showingAllBlogs ? allBlogPosts : allBlogPosts.slice(0, BLOG_PREVIEW_COUNT);
+  grid.innerHTML = posts.map((p, i) => `
+    <div class="blog-card" style="position:relative;" id="blog-${p.id}">
       <div class="blog-thumb ${thumbClasses[i%8]}">${thumbEmojis[i%8]}</div>
       <div class="blog-body">
-        <div class="blog-meta">${formatDate(p.created_at)} · ${p.category || 'General'}</div>
+        <div class="blog-meta">${formatDate(p.created_at)} · ${esc(p.category || 'General')}</div>
         <h3>${esc(p.title)}</h3>
-        <p>${esc(p.body.substring(0,140))}${p.body.length>140?'…':''}</p>
-        <span class="read-more">Read more →</span>
+        <p class="blog-preview-text" id="preview-${p.id}">${esc(p.body.substring(0,140))}${p.body.length>140?'…':''}</p>
+        <p class="blog-full-text" id="full-${p.id}" style="display:none;">${esc(p.body)}</p>
+        ${p.body.length > 140 ? `<span class="read-more" onclick="togglePost('${p.id}',this)">Read more →</span>` : ''}
       </div>
       ${currentUser ? `<button onclick="deleteBlog('${p.id}',event)" style="position:absolute;top:8px;right:8px;background:rgba(255,255,255,0.9);border:1px solid var(--border);border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:12px;color:var(--text-muted)">✕</button>` : ''}
     </div>`).join('');
+  if (viewMoreWrap) {
+    if (allBlogPosts.length > BLOG_PREVIEW_COUNT) {
+      viewMoreWrap.style.display = 'flex';
+      const btn = document.getElementById('blog-view-more-btn');
+      btn.textContent = showingAllBlogs
+        ? `Show less ↑`
+        : `View all ${allBlogPosts.length} posts →`;
+    } else {
+      viewMoreWrap.style.display = 'none';
+    }
+  }
+}
+function togglePost(id, btn) {
+  const preview = document.getElementById('preview-' + id);
+  const full = document.getElementById('full-' + id);
+  const isExpanded = full.style.display !== 'none';
+  preview.style.display = isExpanded ? 'block' : 'none';
+  full.style.display = isExpanded ? 'none' : 'block';
+  btn.textContent = isExpanded ? 'Read more →' : 'Show less ↑';
+}
+function toggleAllBlogs() {
+  showingAllBlogs = !showingAllBlogs;
+  renderBlog();
+  if (!showingAllBlogs) document.getElementById('blog').scrollIntoView({ behavior: 'smooth' });
 }
 async function saveBlog() {
   const title = document.getElementById('blog-title').value.trim();
@@ -581,6 +668,7 @@ async function saveBlog() {
   document.getElementById('blog-title').value = '';
   document.getElementById('blog-category').value = '';
   document.getElementById('blog-body').value = '';
+  showingAllBlogs = false;
   loadBlog();
 }
 async function deleteBlog(id, e) {
@@ -592,19 +680,60 @@ async function deleteBlog(id, e) {
 
 // ── JOURNAL ──
 const journalColors = ['var(--terracotta)','var(--sage)','var(--muted-gold)','var(--warm-brown)'];
+const JOURNAL_PREVIEW_COUNT = 3;
+let allJournalEntries = [];
+let showingAllJournal = false;
+
 async function loadJournal() {
-  const container = document.getElementById('journal-entries');
   const { data, error } = await sb.from('journal_entries').select('*').order('created_at', { ascending: false });
-  if (error || !data || data.length === 0) {
-    container.innerHTML = '<div class="blog-loading" style="color:var(--text-light)">No entries yet.</div>'; return;
+  allJournalEntries = (!error && data) ? data : [];
+  renderJournal();
+}
+function renderJournal() {
+  const container = document.getElementById('journal-entries');
+  const viewMoreWrap = document.getElementById('journal-view-more-wrap');
+  if (allJournalEntries.length === 0) {
+    container.innerHTML = '<div class="blog-loading" style="color:var(--text-light)">No entries yet.</div>';
+    if (viewMoreWrap) viewMoreWrap.style.display = 'none';
+    return;
   }
-  container.innerHTML = data.map((e, i) => `
+  const entries = showingAllJournal ? allJournalEntries : allJournalEntries.slice(0, JOURNAL_PREVIEW_COUNT);
+  container.innerHTML = entries.map((e, i) => {
+    const isLong = e.body.length > 200;
+    return `
     <div class="journal-entry" style="border-left-color:${journalColors[i%4]}">
       <div class="entry-date">${formatDate(e.created_at)}</div>
       <div class="entry-title-text">${esc(e.title)}</div>
-      <p class="entry-text">${esc(e.body)}</p>
+      <p class="entry-text" id="jpreview-${e.id}">${esc(e.body.substring(0,200))}${isLong?'…':''}</p>
+      ${isLong ? `<p class="entry-text" id="jfull-${e.id}" style="display:none;">${esc(e.body)}</p>` : ''}
+      ${isLong ? `<span class="read-more" style="font-size:12.5px;color:var(--terracotta);cursor:pointer;font-weight:500;" onclick="toggleJournalEntry('${e.id}',this)">Read more →</span>` : ''}
       <span class="entry-delete" onclick="deleteJournal('${e.id}')">Delete entry</span>
-    </div>`).join('');
+    </div>`}).join('');
+  if (viewMoreWrap) {
+    if (allJournalEntries.length > JOURNAL_PREVIEW_COUNT) {
+      viewMoreWrap.style.display = 'flex';
+      const btn = document.getElementById('journal-view-more-btn');
+      btn.textContent = showingAllJournal
+        ? 'Show less ↑'
+        : `View all ${allJournalEntries.length} entries →`;
+    } else {
+      viewMoreWrap.style.display = 'none';
+    }
+  }
+}
+function toggleJournalEntry(id, btn) {
+  const preview = document.getElementById('jpreview-' + id);
+  const full = document.getElementById('jfull-' + id);
+  if (!full) return;
+  const isExpanded = full.style.display !== 'none';
+  preview.style.display = isExpanded ? 'block' : 'none';
+  full.style.display = isExpanded ? 'none' : 'block';
+  btn.textContent = isExpanded ? 'Read more →' : 'Show less ↑';
+}
+function toggleAllJournal() {
+  showingAllJournal = !showingAllJournal;
+  renderJournal();
+  if (!showingAllJournal) document.getElementById('journal').scrollIntoView({ behavior: 'smooth' });
 }
 async function saveJournal() {
   const title = document.getElementById('entry-title').value.trim();
@@ -614,6 +743,7 @@ async function saveJournal() {
   if (error) return alert('Error: ' + error.message);
   document.getElementById('entry-title').value = '';
   document.getElementById('entry-body').value = '';
+  showingAllJournal = false;
   loadJournal();
 }
 async function deleteJournal(id) {
@@ -622,10 +752,10 @@ async function deleteJournal(id) {
   loadJournal();
 }
 
-// ── PHOTOS ──
+// ── PHOTOS (teaser — shows latest 6, links to gallery.html) ──
 async function loadPhotos() {
   const { data, error } = await sb.from('photos').select('*').order('created_at', { ascending: false });
-  if (!error && data) { allPhotos = data; renderPhotos(); }
+  if (!error && data) { allPhotos = data; renderPhotoTeaser(); }
 }
 async function handlePhotoUpload(e) {
   const files = Array.from(e.target.files);
@@ -643,50 +773,42 @@ async function handlePhotoUpload(e) {
     const { error: dbErr } = await sb.from('photos').insert({ url: urlData.publicUrl, caption, tag: 'all', storage_path: path, user_id: currentUser.id });
     if (!dbErr) uploaded++;
   }
-  progress.textContent = uploaded > 1 ? `${uploaded} photos uploaded!` : uploaded === 1 ? 'Photo uploaded!' : 'Upload failed.';
+  progress.textContent = uploaded > 0 ? `${uploaded} photo${uploaded>1?'s':''} uploaded!` : 'Upload failed.';
   setTimeout(() => { progress.textContent = ''; }, 3000);
   e.target.value = '';
   await loadPhotos();
 }
-function renderPhotos() {
-  const grid = document.getElementById('photo-grid');
-  const empty = document.getElementById('photo-empty');
-  // "all" filter shows everything; other filters match the tag column
-  const filtered = activeFilter === 'all' ? allPhotos : allPhotos.filter(p => (p.tag || 'all') === activeFilter);
-  if (filtered.length === 0) { grid.innerHTML = ''; grid.appendChild(empty); empty.style.display = 'block'; return; }
+function renderPhotoTeaser() {
+  const grid = document.getElementById('photo-preview-grid');
+  const cta = document.getElementById('gallery-cta');
+  const empty = document.getElementById('photo-preview-empty');
+  if (allPhotos.length === 0) {
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+    cta.style.display = 'none';
+    return;
+  }
   empty.style.display = 'none';
-  grid.innerHTML = filtered.map(p => `
-    <div class="photo-item" onclick="openLightbox('${p.id}')">
+  const preview = allPhotos.slice(0, 2);
+  grid.innerHTML = preview.map(p => `
+    <div class="photo-preview-item" onclick="window.location.href='gallery.html'">
       <img src="${p.url}" alt="${esc(p.caption)}" loading="lazy" />
-      <div class="photo-overlay">
-        <div class="photo-tag-label">${p.tag && p.tag !== 'all' ? p.tag : ''}</div>
-        <div class="photo-caption">${esc(p.caption)}</div>
-      </div>
-      ${currentUser ? `<div class="photo-delete" onclick="deletePhoto(event,'${p.id}','${p.storage_path}')">✕</div>` : ''}
     </div>`).join('');
+  const total = allPhotos.length;
+  document.getElementById('gallery-cta-sub').textContent =
+    total > 2 ? `See all ${total} photographs` : `See the full gallery`;
+  cta.style.display = 'block';
+}
+function openLightbox() { window.location.href = 'gallery.html'; }
+function closeLightbox(e) {
+  if (e.target === document.getElementById('lightbox')) document.getElementById('lightbox').classList.remove('open');
 }
 async function deletePhoto(e, id, path) {
   e.stopPropagation();
   if (!confirm('Delete this photo?')) return;
   await sb.storage.from(PHOTO_BUCKET).remove([path]);
   await sb.from('photos').delete().eq('id', id);
-  loadPhotos();
-}
-function filterPhotos(tag, btn) {
-  activeFilter = tag;
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderPhotos();
-}
-function openLightbox(id) {
-  const p = allPhotos.find(x => String(x.id) === String(id));
-  if (!p) return;
-  document.getElementById('lightbox-img').src = p.url;
-  document.getElementById('lightbox-caption').textContent = p.caption;
-  document.getElementById('lightbox').classList.add('open');
-}
-function closeLightbox(e) {
-  if (e.target === document.getElementById('lightbox')) document.getElementById('lightbox').classList.remove('open');
+  await loadPhotos();
 }
 
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
