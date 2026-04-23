@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Haron Wahome — Medical Researcher & Musician</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --cream: #FAF6EF; --parchment: #F2EAD8; --warm-brown: #8B6240;
+    --deep-brown: #4A2E14; --terracotta: #C46A3A; --muted-gold: #C9943A;
+    --sage: #7A9178; --deep-sage: #3D5440; --text-main: #2C1F0F;
+    --text-muted: #7A6249; --text-light: #A8916F;
+    --border: rgba(139,98,64,0.18); --border-strong: rgba(139,98,64,0.35);
+  }
+  html { scroll-behavior: smooth; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--text-main); line-height: 1.7; font-size: 16px; }
+
+  /* ── AUTH MODAL ── */
+  .auth-overlay {
+    display: none; position: fixed; inset: 0; z-index: 999;
+    background: rgba(44,31,15,0.6); backdrop-filter: blur(4px);
+    align-items: center; justify-content: center;
+  }
+  .auth-overlay.open { display: flex; }
+  .auth-box {
+    background: #fff; border-radius: 14px; padding: 2.5rem 2rem;
+    width: 100%; max-width: 380px; border: 1px solid var(--border);
+    box-shadow: 0 20px 60px rgba(44,31,15,0.2);
+  }
+  .auth-box h2 { font-family: 'Lora', serif; font-size: 1.4rem; color: var(--deep-brown); margin-bottom: 0.3rem; }
+  .auth-box p { font-size: 13px; color: var(--text-muted); margin-bottom: 1.5rem; }
+  .auth-field { margin-bottom: 1rem; }
+  .auth-field label { display: block; font-size: 11px; font-weight: 500; color: var(--warm-brown); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.4rem; }
+  .auth-field input { width: 100%; border: 1px solid var(--border); border-radius: 7px; padding: 9px 13px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--text-main); background: var(--cream); outline: none; transition: border-color 0.2s; }
+  .auth-field input:focus { border-color: var(--border-strong); }
+  .auth-error { font-size: 12.5px; color: #c0392b; background: #fdf0ef; border: 1px solid #f5c6c2; border-radius: 6px; padding: 8px 12px; margin-bottom: 1rem; display: none; }
+  .auth-btn { width: 100%; background: var(--terracotta); color: #fff; border: none; border-radius: 7px; padding: 11px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; transition: background 0.2s; }
+  .auth-btn:hover { background: #b35e30; }
+  .auth-close { position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 18px; cursor: pointer; color: var(--text-muted); }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(250,246,239,0.92); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border); padding: 0 2rem;
+    display: flex; align-items: center; justify-content: space-between; height: 60px;
+  }
+  .nav-name { font-family: 'Lora', serif; font-size: 17px; font-weight: 600; color: var(--deep-brown); }
+  .nav-links { display: flex; gap: 1.8rem; list-style: none; align-items: center; }
+  .nav-links a { font-size: 13px; font-weight: 500; color: var(--text-muted); text-decoration: none; letter-spacing: 0.04em; text-transform: uppercase; transition: color 0.2s; }
+  .nav-links a:hover { color: var(--terracotta); }
+  .nav-auth-btn { font-size: 12px; font-weight: 500; padding: 6px 16px; border-radius: 20px; border: 1.5px solid var(--border-strong); background: transparent; color: var(--warm-brown); cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+  .nav-auth-btn:hover { background: var(--parchment); }
+  .nav-auth-btn.logged-in { background: rgba(196,106,58,0.1); color: var(--terracotta); border-color: rgba(196,106,58,0.3); }
+
+  /* ── ADMIN BANNER ── */
+  .admin-banner {
+    display: none; position: fixed; top: 60px; left: 0; right: 0; z-index: 90;
+    background: var(--terracotta); color: #fff; text-align: center;
+    font-size: 12.5px; padding: 7px; letter-spacing: 0.04em;
+  }
+  .admin-banner.show { display: block; }
+
+  /* ── HERO ── */
+  .hero { min-height: 100vh; display: flex; align-items: center; padding: 120px 2rem 60px; position: relative; overflow: hidden; }
+  .hero-bg { position: absolute; inset: 0; background: radial-gradient(ellipse 80% 60% at 70% 40%, rgba(196,106,58,0.07) 0%, transparent 70%), radial-gradient(ellipse 60% 80% at 20% 70%, rgba(122,145,120,0.08) 0%, transparent 70%); pointer-events: none; }
+  .hero-inner { max-width: 1100px; margin: 0 auto; width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; }
+  .hero-tag { display: inline-block; font-size: 11px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--terracotta); background: rgba(196,106,58,0.1); border: 1px solid rgba(196,106,58,0.25); border-radius: 20px; padding: 4px 14px; margin-bottom: 1.2rem; }
+  .hero h1 { font-family: 'Lora', serif; font-size: clamp(2.2rem,4vw,3.2rem); font-weight: 600; color: var(--deep-brown); line-height: 1.2; margin-bottom: 1.2rem; }
+  .hero h1 em { font-style: italic; color: var(--terracotta); }
+  .hero-desc { font-size: 16px; color: var(--text-muted); line-height: 1.8; margin-bottom: 2rem; max-width: 460px; }
+  .hero-cta { display: flex; gap: 1rem; flex-wrap: wrap; }
+  .btn { display: inline-block; padding: 10px 24px; border-radius: 6px; font-size: 13.5px; font-weight: 500; text-decoration: none; transition: all 0.2s; cursor: pointer; border: none; font-family: 'DM Sans', sans-serif; }
+  .btn-primary { background: var(--terracotta); color: #fff; }
+  .btn-primary:hover { background: #b35e30; }
+  .btn-outline { background: transparent; color: var(--warm-brown); border: 1.5px solid var(--border-strong); }
+  .btn-outline:hover { background: var(--parchment); }
+  .hero-visual { display: flex; flex-direction: column; align-items: center; gap: 1.5rem; }
+  .avatar-ring { width: 220px; height: 220px; border-radius: 50%; background: var(--parchment); border: 3px solid rgba(196,106,58,0.3); display: flex; align-items: center; justify-content: center; position: relative; font-family: 'Lora', serif; font-size: 72px; font-weight: 600; color: var(--terracotta); letter-spacing: -2px; }
+  .avatar-ring::before { content: ''; position: absolute; inset: -8px; border-radius: 50%; border: 1px dashed rgba(196,106,58,0.25); }
+  .hero-badges { display: flex; gap: 0.6rem; flex-wrap: wrap; justify-content: center; }
+  .badge { font-size: 12px; font-weight: 500; padding: 5px 12px; border-radius: 20px; background: var(--parchment); color: var(--warm-brown); border: 1px solid var(--border); }
+  .badge.green { background: rgba(122,145,120,0.12); color: var(--deep-sage); border-color: rgba(122,145,120,0.25); }
+  .badge.gold { background: rgba(201,148,58,0.12); color: #7a5a1a; border-color: rgba(201,148,58,0.3); }
+
+  /* ── SECTIONS ── */
+  .section { padding: 80px 2rem; }
+  .section-inner { max-width: 1100px; margin: 0 auto; }
+  .section-label { font-size: 11px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--terracotta); margin-bottom: 0.5rem; }
+  .section-title { font-family: 'Lora', serif; font-size: clamp(1.6rem,3vw,2.2rem); font-weight: 600; color: var(--deep-brown); margin-bottom: 1rem; }
+  .section-subtitle { font-size: 16px; color: var(--text-muted); max-width: 560px; margin-bottom: 3rem; line-height: 1.8; }
+
+  /* ── ABOUT ── */
+  #about { background: var(--parchment); }
+  .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: start; }
+  .about-text p { color: var(--text-muted); margin-bottom: 1.2rem; line-height: 1.85; }
+  .stat-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 1rem; margin-top: 2rem; }
+  .stat-card { background: rgba(250,246,239,0.8); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; text-align: center; }
+  .stat-num { font-family: 'Lora', serif; font-size: 1.8rem; font-weight: 600; color: var(--terracotta); }
+  .stat-label { font-size: 11px; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; }
+  .about-highlights h3 { font-family: 'Lora', serif; font-size: 1.1rem; color: var(--deep-brown); margin-bottom: 1rem; }
+  .highlight-item { display: flex; gap: 1rem; align-items: flex-start; margin-bottom: 1.2rem; }
+  .highlight-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--terracotta); margin-top: 8px; flex-shrink: 0; }
+  .highlight-item p { font-size: 14.5px; color: var(--text-muted); line-height: 1.7; }
+  .highlight-item strong { color: var(--deep-brown); }
+
+  /* ── RESEARCH ── */
+  .research-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(300px,1fr)); gap: 1.5rem; }
+  .research-card { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; transition: border-color 0.2s, transform 0.2s; position: relative; overflow: hidden; }
+  .research-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+  .research-card.cardio::before { background: linear-gradient(90deg, var(--terracotta), var(--muted-gold)); }
+  .research-card.neuro::before { background: linear-gradient(90deg, var(--sage), var(--deep-sage)); }
+  .research-card.diabetes::before { background: linear-gradient(90deg, var(--muted-gold), #e8a838); }
+  .research-card:hover { border-color: var(--border-strong); transform: translateY(-3px); }
+  .research-icon { font-size: 28px; margin-bottom: 0.8rem; }
+  .research-card h3 { font-family: 'Lora', serif; font-size: 1.1rem; color: var(--deep-brown); margin-bottom: 0.5rem; }
+  .research-card p { font-size: 14px; color: var(--text-muted); line-height: 1.7; }
+  .research-tag { display: inline-block; font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 20px; margin-top: 0.8rem; }
+  .tag-red { background: rgba(196,106,58,0.1); color: var(--terracotta); }
+  .tag-green { background: rgba(122,145,120,0.12); color: var(--deep-sage); }
+  .tag-gold { background: rgba(201,148,58,0.12); color: #7a5a1a; }
+
+  /* ── MUSIC ── */
+  #music { background: var(--parchment); }
+  .music-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.5rem; }
+  .music-card { background: rgba(250,246,239,0.9); border: 1px solid var(--border); border-radius: 12px; padding: 2rem 1.5rem; text-align: center; transition: all 0.2s; }
+  .music-card:hover { background: #fff; border-color: var(--border-strong); }
+  .instrument-icon { width: 64px; height: 64px; border-radius: 50%; background: rgba(196,106,58,0.1); display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 28px; }
+  .music-card h3 { font-family: 'Lora', serif; font-size: 1.1rem; color: var(--deep-brown); margin-bottom: 0.4rem; }
+  .music-card p { font-size: 13.5px; color: var(--text-muted); }
+
+  /* ── BLOG ── */
+  .blog-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(300px,1fr)); gap: 1.5rem; }
+  .blog-card { background: #fff; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; transition: border-color 0.2s, transform 0.2s; cursor: pointer; }
+  .blog-card:hover { border-color: var(--border-strong); transform: translateY(-3px); }
+  .blog-thumb { height: 140px; display: flex; align-items: center; justify-content: center; font-size: 40px; }
+  .blog-thumb.t1 { background: linear-gradient(135deg,rgba(196,106,58,0.15),rgba(201,148,58,0.1)); }
+  .blog-thumb.t2 { background: linear-gradient(135deg,rgba(122,145,120,0.15),rgba(61,84,64,0.1)); }
+  .blog-thumb.t3 { background: linear-gradient(135deg,rgba(201,148,58,0.15),rgba(196,106,58,0.08)); }
+  .blog-thumb.t4 { background: linear-gradient(135deg,rgba(122,145,120,0.1),rgba(196,106,58,0.08)); }
+  .blog-body { padding: 1.2rem 1.4rem; }
+  .blog-meta { font-size: 11px; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.5rem; }
+  .blog-card h3 { font-family: 'Lora', serif; font-size: 1rem; color: var(--deep-brown); margin-bottom: 0.4rem; line-height: 1.4; }
+  .blog-card p { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+  .read-more { font-size: 12.5px; color: var(--terracotta); font-weight: 500; margin-top: 0.8rem; display: block; }
+  /* admin: add blog */
+  .admin-compose { background: rgba(196,106,58,0.06); border: 1.5px dashed rgba(196,106,58,0.3); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; display: none; }
+  .admin-compose.show { display: block; }
+  .admin-compose h3 { font-family: 'Lora', serif; font-size: 1rem; color: var(--deep-brown); margin-bottom: 1rem; }
+  .compose-input, .compose-area { width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--text-main); background: #fff; margin-bottom: 0.8rem; resize: vertical; outline: none; }
+  .compose-input:focus, .compose-area:focus { border-color: var(--border-strong); }
+  .compose-area { min-height: 120px; }
+  .compose-row { display: flex; gap: 0.8rem; justify-content: flex-end; }
+  .blog-loading { text-align: center; color: var(--text-light); padding: 2rem; font-style: italic; }
+
+  /* ── PHOTOGRAPHY ── */
+  #photos { background: var(--parchment); }
+  .photo-upload-zone { border: 2px dashed rgba(196,106,58,0.3); border-radius: 12px; background: rgba(196,106,58,0.04); padding: 2.5rem; text-align: center; cursor: pointer; transition: all 0.2s; margin-bottom: 2rem; position: relative; display: none; }
+  .photo-upload-zone.show { display: block; }
+  .photo-upload-zone:hover { border-color: var(--terracotta); background: rgba(196,106,58,0.07); }
+  .photo-upload-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .upload-icon { font-size: 32px; margin-bottom: 0.6rem; }
+  .photo-upload-zone h3 { font-family: 'Lora', serif; font-size: 1.1rem; font-weight: 600; color: var(--deep-brown); margin-bottom: 0.3rem; }
+  .photo-upload-zone p { font-size: 13px; color: var(--text-muted); }
+  .upload-hint { font-size: 11px; color: var(--text-light); margin-top: 0.5rem; }
+  .photo-filters { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+  .filter-btn { font-size: 12px; font-weight: 500; padding: 5px 14px; border-radius: 20px; background: #fff; color: var(--text-muted); border: 1px solid var(--border); cursor: pointer; transition: all 0.2s; font-family: 'DM Sans', sans-serif; }
+  .filter-btn:hover, .filter-btn.active { background: rgba(196,106,58,0.1); color: var(--terracotta); border-color: rgba(196,106,58,0.3); }
+  .photo-grid { columns: 3; column-gap: 1rem; }
+  .photo-item { break-inside: avoid; margin-bottom: 1rem; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); position: relative; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; background: #fff; }
+  .photo-item:hover { transform: scale(1.01); box-shadow: 0 6px 24px rgba(74,46,20,0.1); }
+  .photo-item img { display: block; width: 100%; height: auto; }
+  .photo-overlay { position: absolute; inset: 0; background: linear-gradient(to top,rgba(74,46,20,0.75) 0%,transparent 55%); opacity: 0; transition: opacity 0.25s; display: flex; flex-direction: column; justify-content: flex-end; padding: 1rem; }
+  .photo-item:hover .photo-overlay { opacity: 1; }
+  .photo-caption { font-size: 13px; color: #fff; font-family: 'Lora', serif; font-style: italic; }
+  .photo-tag-label { font-size: 10px; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 3px; }
+  .photo-delete { position: absolute; top: 8px; right: 8px; background: rgba(255,255,255,0.85); border: 1px solid var(--border); color: var(--text-muted); border-radius: 6px; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; opacity: 0; transition: opacity 0.2s; }
+  .photo-item:hover .photo-delete { opacity: 1; }
+  .photo-delete:hover { color: var(--terracotta); }
+  .photo-empty { text-align: center; padding: 3rem; color: var(--text-light); font-size: 14px; background: rgba(250,246,239,0.8); border: 1.5px dashed var(--border); border-radius: 12px; }
+  .photo-empty .empty-icon { font-size: 36px; margin-bottom: 0.8rem; opacity: 0.4; }
+  .upload-progress { font-size: 12.5px; color: var(--terracotta); margin-top: 0.5rem; min-height: 20px; }
+
+  /* ── LIGHTBOX ── */
+  .lightbox { display: none; position: fixed; inset: 0; z-index: 500; background: rgba(44,31,15,0.92); align-items: center; justify-content: center; flex-direction: column; gap: 1rem; padding: 2rem; }
+  .lightbox.open { display: flex; }
+  .lightbox img { max-width: 90vw; max-height: 80vh; border-radius: 10px; object-fit: contain; border: 2px solid rgba(255,255,255,0.15); }
+  .lightbox-caption { color: rgba(255,255,255,0.75); font-family: 'Lora', serif; font-style: italic; font-size: 1rem; }
+  .lightbox-close { position: absolute; top: 1.2rem; right: 1.5rem; background: rgba(250,246,239,0.15); border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.8); border-radius: 20px; padding: 6px 16px; cursor: pointer; font-size: 13px; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+  .lightbox-close:hover { background: rgba(250,246,239,0.25); color: #fff; }
+
+  /* ── JOURNAL ── */
+  .journal-compose { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; display: none; }
+  .journal-compose.show { display: block; }
+  .journal-compose h3 { font-family: 'Lora', serif; font-size: 1rem; color: var(--deep-brown); margin-bottom: 1rem; font-style: italic; }
+  .journal-entries { display: flex; flex-direction: column; gap: 1rem; }
+  .journal-entry { background: #fff; border: 1px solid var(--border); border-left: 3px solid var(--terracotta); border-radius: 0 10px 10px 0; padding: 1.2rem 1.4rem; }
+  .entry-date { font-size: 11px; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.3rem; }
+  .entry-title-text { font-family: 'Lora', serif; font-size: 1rem; color: var(--deep-brown); margin-bottom: 0.4rem; }
+  .entry-text { font-size: 14px; color: var(--text-muted); line-height: 1.7; }
+  .entry-delete { font-size: 11px; color: var(--text-light); cursor: pointer; margin-top: 0.5rem; display: none; }
+  .entry-delete:hover { color: #c0392b; }
+  .is-admin .entry-delete { display: inline-block; }
+
+  /* ── CONTACT ── */
+  .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: center; }
+  .contact-text p { color: var(--text-muted); line-height: 1.8; margin-bottom: 1.5rem; }
+  .contact-links { display: flex; flex-direction: column; gap: 0.8rem; }
+  .contact-link { display: flex; align-items: center; gap: 0.8rem; font-size: 14px; color: var(--text-muted); text-decoration: none; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--parchment); transition: all 0.2s; }
+  .contact-link:hover { background: #fff; border-color: var(--border-strong); color: var(--deep-brown); }
+  .contact-link span { font-size: 16px; }
+  .contact-form { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 1.8rem; }
+  .form-field { margin-bottom: 1rem; }
+  .form-field label { display: block; font-size: 12px; font-weight: 500; color: var(--warm-brown); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.06em; }
+  .form-field input, .form-field textarea { width: 100%; border: 1px solid var(--border); border-radius: 7px; padding: 9px 13px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--text-main); background: var(--cream); outline: none; resize: none; transition: border-color 0.2s; }
+  .form-field input:focus, .form-field textarea:focus { border-color: var(--border-strong); }
+
+  footer { background: var(--deep-brown); color: rgba(255,255,255,0.55); text-align: center; padding: 2rem; font-size: 13px; }
+  footer strong { color: rgba(255,255,255,0.85); }
+
+  @keyframes fadeUp { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
+  .hero-left > * { animation: fadeUp 0.7s ease both; }
+  .hero-left > *:nth-child(1) { animation-delay: 0.1s; }
+  .hero-left > *:nth-child(2) { animation-delay: 0.2s; }
+  .hero-left > *:nth-child(3) { animation-delay: 0.3s; }
+  .hero-left > *:nth-child(4) { animation-delay: 0.4s; }
+  .hero-visual { animation: fadeUp 0.8s 0.35s ease both; }
+
+  @media (max-width: 768px) {
+    .hero-inner, .about-grid, .contact-grid { grid-template-columns: 1fr; }
+    .music-grid { grid-template-columns: 1fr; }
+    .hero-visual { display: none; }
+    .stat-row { grid-template-columns: 1fr 1fr; }
+    nav { padding: 0 1rem; }
+    .nav-links { gap: 1rem; }
+    .nav-links a { font-size: 11px; }
+    .photo-grid { columns: 2; }
+  }
+  @media (max-width: 480px) { .photo-grid { columns: 1; } }
+</style>
+</head>
+<body>
+
+<!-- ══ AUTH MODAL ══ -->
+<div class="auth-overlay" id="auth-overlay">
+  <div class="auth-box" style="position:relative;">
+    <button class="auth-close" onclick="closeAuth()">✕</button>
+    <h2>Owner Login</h2>
+    <p>This area is only for Haron. Visitors can view the site without logging in.</p>
+    <div class="auth-error" id="auth-error"></div>
+    <div class="auth-field">
+      <label>Email</label>
+      <input type="email" id="auth-email" placeholder="your@email.com" />
+    </div>
+    <div class="auth-field">
+      <label>Password</label>
+      <input type="password" id="auth-password" placeholder="••••••••" />
+    </div>
+    <button class="auth-btn" onclick="doLogin()">Sign In</button>
+  </div>
+</div>
+
+<!-- ══ ADMIN BANNER ══ -->
+<div class="admin-banner" id="admin-banner">
+  ✏️ You are logged in as the site owner — upload, write, and publish freely.
+  <button onclick="doLogout()" style="margin-left:1rem;background:rgba(255,255,255,0.2);border:none;color:#fff;padding:3px 12px;border-radius:10px;cursor:pointer;font-size:12px;">Log out</button>
+</div>
+
+<!-- ══ NAV ══ -->
+<nav>
+  <div class="nav-name">Haron Wahome</div>
+  <ul class="nav-links">
+    <li><a href="#about">About</a></li>
+    <li><a href="#research">Research</a></li>
+    <li><a href="#music">Music</a></li>
+    <li><a href="#blog">Blog</a></li>
+    <li><a href="#photos">Photos</a></li>
+    <li><a href="#journal">Journal</a></li>
+    <li><a href="#contact">Contact</a></li>
+    <li><button class="nav-auth-btn" id="nav-auth-btn" onclick="openAuth()">Owner Login</button></li>
+  </ul>
+</nav>
+
+<!-- ══ HERO ══ -->
+<section class="hero" id="home">
+  <div class="hero-bg"></div>
+  <div class="hero-inner">
+    <div class="hero-left">
+      <div class="hero-tag">Medical Student &amp; Researcher</div>
+      <h1>Healing through <em>science,</em><br>living through <em>music.</em></h1>
+      <p class="hero-desc">A passionate medical student bridging the worlds of cardiovascular and neurosurgical research with the beauty of music. Valedictorian, lifelong learner, and devoted storyteller.</p>
+      <div class="hero-cta">
+        <a href="#research" class="btn btn-primary">My Research</a>
+        <a href="#blog" class="btn btn-outline">Read My Blog</a>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <div class="avatar-ring">HW</div>
+      <div class="hero-badges">
+        <span class="badge gold">🏅 Valedictorian</span>
+        <span class="badge green">🫀 Cardiology</span>
+        <span class="badge">🧠 Neurosurgery</span>
+        <span class="badge gold">🎹 Pianist</span>
+        <span class="badge">🎷 Saxophonist</span>
+        <span class="badge green">🎸 Guitarist</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ ABOUT ══ -->
+<section class="section" id="about">
+  <div class="section-inner">
+    <div class="section-label">Who I Am</div>
+    <h2 class="section-title">A doctor-in-training with a heart for art.</h2>
+    <div class="about-grid">
+      <div class="about-text">
+        <p>My name is Haron Wahome — a medical student driven by curiosity and compassion. I want to pursue research that makes a real difference: understanding why the heart fails, how the brain sustains injury, and why metabolic disease like diabetes continues to affect millions.</p>
+        <p>I graduated as valedictorian of my class — a testament not to perfection, but to relentless pursuit of understanding. Medicine is as much an art as it is a science, which is perhaps why I find deep meaning in playing the piano, saxophone, and guitar.</p>
+        <p>This portfolio is my living notebook — a place to share research, reflect in my journal, and write about the ideas that move me.</p>
+        <div class="stat-row">
+          <div class="stat-card"><div class="stat-num">3</div><div class="stat-label">Research Areas</div></div>
+          <div class="stat-card"><div class="stat-num">3</div><div class="stat-label">Instruments</div></div>
+          <div class="stat-card"><div class="stat-num">1st</div><div class="stat-label">Class Rank</div></div>
+        </div>
+      </div>
+      <div class="about-highlights">
+        <h3>Key Highlights</h3>
+        <div class="highlight-item"><div class="highlight-dot"></div><p><strong>Valedictorian</strong> — Graduated top of class, recognised for academic excellence and leadership in the medical community.</p></div>
+        <div class="highlight-item"><div class="highlight-dot" style="background:var(--sage)"></div><p><strong>Research Focus</strong> — Deep interest in cardiovascular pathology, neurosurgical interventions, and the metabolic complexity of diabetes.</p></div>
+        <div class="highlight-item"><div class="highlight-dot" style="background:var(--muted-gold)"></div><p><strong>Musician</strong> — Trained in piano, saxophone, and guitar. Music is how I rest, reflect, and reconnect with the human side of medicine.</p></div>
+        <div class="highlight-item"><div class="highlight-dot"></div><p><strong>Photographer</strong> — I photograph the world with the same attention medicine demands. Every image is an observation, a detail noticed.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ RESEARCH ══ -->
+<section class="section" id="research">
+  <div class="section-inner">
+    <div class="section-label">Academic Focus</div>
+    <h2 class="section-title">Research Interests</h2>
+    <p class="section-subtitle">My clinical curiosity is anchored in three interconnected areas of medicine where innovation can save and transform lives.</p>
+    <div class="research-grid">
+      <div class="research-card cardio"><div class="research-icon">🫀</div><h3>Cardiovascular Research</h3><p>Exploring the mechanisms of heart disease — from ischaemia and arrhythmias to heart failure and hypertension. Particularly interested in how lifestyle, genetics, and metabolic factors converge to drive cardiac pathology in young adults.</p><span class="research-tag tag-red">Cardiology</span></div>
+      <div class="research-card neuro"><div class="research-icon">🧠</div><h3>Neurosurgical Research</h3><p>Investigating brain tumours, stroke outcomes, and the promise of minimally invasive neurosurgical techniques. Drawn to how surgical precision and neuro-oncology intersect to improve patient survival and quality of life.</p><span class="research-tag tag-green">Neurosurgery</span></div>
+      <div class="research-card diabetes"><div class="research-icon">🔬</div><h3>Diabetes & Metabolic Disease</h3><p>Studying Type 1 and Type 2 diabetes — their aetiology, complications, and emerging therapeutic approaches including beta-cell regeneration, continuous glucose monitoring, and the gut microbiome's role in metabolic regulation.</p><span class="research-tag tag-gold">Endocrinology</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ MUSIC ══ -->
+<section class="section" id="music">
+  <div class="section-inner">
+    <div class="section-label">Beyond Medicine</div>
+    <h2 class="section-title">Music as Medicine</h2>
+    <p class="section-subtitle">Playing music is my most honest form of self-expression. Three instruments, one language — the language of feeling.</p>
+    <div class="music-grid">
+      <div class="music-card"><div class="instrument-icon">🎹</div><h3>Piano</h3><p>My first and most intimate instrument. From classical nocturnes to quiet improvisations at the end of a long clinical day — the piano holds my most reflective hours.</p></div>
+      <div class="music-card"><div class="instrument-icon" style="background:rgba(122,145,120,0.12)">🎷</div><h3>Saxophone</h3><p>The saxophone's voice mirrors the vulnerability of the human body — warm, breathy, expressive. It taught me that breath is medicine too.</p></div>
+      <div class="music-card"><div class="instrument-icon" style="background:rgba(201,148,58,0.12)">🎸</div><h3>Guitar</h3><p>The guitar grounds me. Whether strumming alone or playing with friends, it reminds me that healing often happens in community, not in isolation.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ BLOG ══ -->
+<section class="section" id="blog">
+  <div class="section-inner">
+    <div class="section-label">Writing</div>
+    <h2 class="section-title">From My Blog</h2>
+    <p class="section-subtitle">Writing about medicine, the human condition, research discoveries, and the things that make this profession both exhausting and extraordinary.</p>
+
+    <!-- Admin: write blog post -->
+    <div class="admin-compose" id="blog-compose">
+      <h3>✍️ Write a new post</h3>
+      <input class="compose-input" type="text" id="blog-title" placeholder="Post title…" />
+      <input class="compose-input" type="text" id="blog-category" placeholder="Category (e.g. Cardiology, Reflections…)" />
+      <textarea class="compose-area" id="blog-body" placeholder="Write your post here…" style="min-height:160px;"></textarea>
+      <div class="compose-row">
+        <button class="btn btn-outline" onclick="saveBlog()">Publish Post</button>
+      </div>
+    </div>
+
+    <div class="blog-grid" id="blog-grid">
+      <div class="blog-loading">Loading posts…</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ PHOTOGRAPHY ══ -->
+<section class="section" id="photos">
+  <div class="section-inner">
+    <div class="section-label">Photography</div>
+    <h2 class="section-title">Through My Lens</h2>
+    <p class="section-subtitle">Medicine sharpens the eye for detail. Here is what I see when I step away from the wards — moments, places, and quiet observations captured in light.</p>
+
+    <div class="photo-upload-zone" id="upload-zone">
+      <input type="file" accept="image/*" multiple id="photo-input" onchange="handlePhotoUpload(event)" />
+      <div class="upload-icon">📷</div>
+      <h3>Add your photographs</h3>
+      <p>Click or drag images here to upload them</p>
+      <div class="upload-hint">JPG, PNG, WEBP — multiple files supported</div>
+      <div class="upload-progress" id="upload-progress"></div>
+    </div>
+
+    <div class="photo-filters">
+      <button class="filter-btn active" onclick="filterPhotos('all',this)">All</button>
+      <button class="filter-btn" onclick="filterPhotos('nature',this)">Nature</button>
+      <button class="filter-btn" onclick="filterPhotos('clinical',this)">Clinical</button>
+      <button class="filter-btn" onclick="filterPhotos('travel',this)">Travel</button>
+      <button class="filter-btn" onclick="filterPhotos('music',this)">Music</button>
+      <button class="filter-btn" onclick="filterPhotos('people',this)">People</button>
+    </div>
+
+    <div class="photo-grid" id="photo-grid">
+      <div class="photo-empty" id="photo-empty"><div class="empty-icon">🖼️</div><p>No photos yet.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox(event)">
+  <button class="lightbox-close" onclick="document.getElementById('lightbox').classList.remove('open')">✕ Close</button>
+  <img id="lightbox-img" src="" alt="" />
+  <div class="lightbox-caption" id="lightbox-caption"></div>
+</div>
+
+<!-- ══ JOURNAL ══ -->
+<section class="section" id="journal" style="background:var(--parchment)">
+  <div class="section-inner">
+    <div class="section-label">Personal Journal</div>
+    <h2 class="section-title">My Journal</h2>
+    <p class="section-subtitle">A private-turned-public space for honest thoughts, clinical reflections, and the small moments that shape a medical education.</p>
+
+    <div class="journal-compose" id="journal-compose">
+      <h3>✍️ Write a new entry</h3>
+      <input class="compose-input" type="text" id="entry-title" placeholder="Entry title…" />
+      <textarea class="compose-area" id="entry-body" placeholder="What's on your mind today?"></textarea>
+      <div class="compose-row">
+        <button class="btn btn-outline" onclick="saveJournal()">Publish Entry</button>
+      </div>
+    </div>
+
+    <div class="journal-entries" id="journal-entries">
+      <div class="blog-loading">Loading entries…</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ CONTACT ══ -->
+<section class="section" id="contact">
+  <div class="section-inner">
+    <div class="section-label">Get in Touch</div>
+    <h2 class="section-title">Let's Connect</h2>
+    <div class="contact-grid">
+      <div class="contact-text">
+        <p>Whether you're a fellow researcher, a patient advocate, a musician, or simply someone who stumbled onto this page — I'd love to hear from you.</p>
+        <div class="contact-links">
+          <a href="mailto:haron@example.com" class="contact-link"><span>✉️</span> haron@example.com</a>
+          <a href="#" class="contact-link"><span>🔗</span> linkedin.com/in/haronwahome</a>
+          <a href="#" class="contact-link"><span>📚</span> ResearchGate Profile</a>
+          <a href="#" class="contact-link"><span>🎵</span> SoundCloud / Music</a>
+        </div>
+      </div>
+      <div class="contact-form">
+        <div class="form-field"><label>Your Name</label><input type="text" placeholder="Jane Mwangi" /></div>
+        <div class="form-field"><label>Email</label><input type="email" placeholder="jane@example.com" /></div>
+        <div class="form-field"><label>Message</label><textarea rows="4" placeholder="Hello Haron, I came across your research on…"></textarea></div>
+        <button class="btn btn-primary" style="width:100%">Send Message</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>Crafted with care · <strong>Haron Wahome</strong> · Medical Student, Researcher &amp; Musician · © 2025</p>
+</footer>
+
+<script>
+// ══════════════════════════════════════════════
+//  CONFIGURATION — paste your Supabase values here
+// ══════════════════════════════════════════════
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+const PHOTO_BUCKET = 'photos'; // name of your Supabase Storage bucket
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let currentUser = null;
+let allPhotos = [];
+let activeFilter = 'all';
+
+// ── INIT ──
+document.addEventListener('DOMContentLoaded', async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) setAdmin(session.user);
+  loadBlog();
+  loadJournal();
+  loadPhotos();
+  sb.auth.onAuthStateChange((_e, session) => {
+    if (session) setAdmin(session.user); else clearAdmin();
+  });
+  document.querySelectorAll('nav a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      document.querySelector(a.getAttribute('href'))?.scrollIntoView({ behavior: 'smooth' });
+    });
+  });
+});
+
+// ── AUTH ──
+function openAuth() { document.getElementById('auth-overlay').classList.add('open'); }
+function closeAuth() { document.getElementById('auth-overlay').classList.remove('open'); }
+async function doLogin() {
+  const email = document.getElementById('auth-email').value.trim();
+  const pass = document.getElementById('auth-password').value;
+  const errEl = document.getElementById('auth-error');
+  errEl.style.display = 'none';
+  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; }
+  else closeAuth();
+}
+async function doLogout() { await sb.auth.signOut(); }
+function setAdmin(user) {
+  currentUser = user;
+  document.body.classList.add('is-admin');
+  document.getElementById('admin-banner').classList.add('show');
+  document.getElementById('nav-auth-btn').textContent = 'Logged in ✓';
+  document.getElementById('nav-auth-btn').classList.add('logged-in');
+  document.getElementById('nav-auth-btn').onclick = doLogout;
+  document.getElementById('blog-compose').classList.add('show');
+  document.getElementById('journal-compose').classList.add('show');
+  document.getElementById('upload-zone').classList.add('show');
+}
+function clearAdmin() {
+  currentUser = null;
+  document.body.classList.remove('is-admin');
+  document.getElementById('admin-banner').classList.remove('show');
+  document.getElementById('nav-auth-btn').textContent = 'Owner Login';
+  document.getElementById('nav-auth-btn').classList.remove('logged-in');
+  document.getElementById('nav-auth-btn').onclick = openAuth;
+  document.getElementById('blog-compose').classList.remove('show');
+  document.getElementById('journal-compose').classList.remove('show');
+  document.getElementById('upload-zone').classList.remove('show');
+}
+
+// ── BLOG ──
+const thumbEmojis = ['🫀','🧠','🔬','🎶','🌿','📖','💊','🩺'];
+const thumbClasses = ['t1','t2','t3','t4','t1','t2','t3','t4'];
+async function loadBlog() {
+  const grid = document.getElementById('blog-grid');
+  const { data, error } = await sb.from('blog_posts').select('*').order('created_at', { ascending: false });
+  if (error || !data || data.length === 0) {
+    grid.innerHTML = '<div class="blog-loading" style="color:var(--text-light)">No posts yet — check back soon.</div>'; return;
+  }
+  grid.innerHTML = data.map((p, i) => `
+    <div class="blog-card" style="position:relative;">
+      <div class="blog-thumb ${thumbClasses[i%8]}">${thumbEmojis[i%8]}</div>
+      <div class="blog-body">
+        <div class="blog-meta">${formatDate(p.created_at)} · ${p.category || 'General'}</div>
+        <h3>${esc(p.title)}</h3>
+        <p>${esc(p.body.substring(0,140))}${p.body.length>140?'…':''}</p>
+        <span class="read-more">Read more →</span>
+      </div>
+      ${currentUser ? `<button onclick="deleteBlog('${p.id}',event)" style="position:absolute;top:8px;right:8px;background:rgba(255,255,255,0.9);border:1px solid var(--border);border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:12px;color:var(--text-muted)">✕</button>` : ''}
+    </div>`).join('');
+}
+async function saveBlog() {
+  const title = document.getElementById('blog-title').value.trim();
+  const cat = document.getElementById('blog-category').value.trim();
+  const body = document.getElementById('blog-body').value.trim();
+  if (!title || !body) return alert('Please fill in a title and body.');
+  const { error } = await sb.from('blog_posts').insert({ title, category: cat, body, user_id: currentUser.id });
+  if (error) return alert('Error saving post: ' + error.message);
+  document.getElementById('blog-title').value = '';
+  document.getElementById('blog-category').value = '';
+  document.getElementById('blog-body').value = '';
+  loadBlog();
+}
+async function deleteBlog(id, e) {
+  e.stopPropagation();
+  if (!confirm('Delete this post?')) return;
+  await sb.from('blog_posts').delete().eq('id', id);
+  loadBlog();
+}
+
+// ── JOURNAL ──
+const journalColors = ['var(--terracotta)','var(--sage)','var(--muted-gold)','var(--warm-brown)'];
+async function loadJournal() {
+  const container = document.getElementById('journal-entries');
+  const { data, error } = await sb.from('journal_entries').select('*').order('created_at', { ascending: false });
+  if (error || !data || data.length === 0) {
+    container.innerHTML = '<div class="blog-loading" style="color:var(--text-light)">No entries yet.</div>'; return;
+  }
+  container.innerHTML = data.map((e, i) => `
+    <div class="journal-entry" style="border-left-color:${journalColors[i%4]}">
+      <div class="entry-date">${formatDate(e.created_at)}</div>
+      <div class="entry-title-text">${esc(e.title)}</div>
+      <p class="entry-text">${esc(e.body)}</p>
+      <span class="entry-delete" onclick="deleteJournal('${e.id}')">Delete entry</span>
+    </div>`).join('');
+}
+async function saveJournal() {
+  const title = document.getElementById('entry-title').value.trim();
+  const body = document.getElementById('entry-body').value.trim();
+  if (!title || !body) return;
+  const { error } = await sb.from('journal_entries').insert({ title, body, user_id: currentUser.id });
+  if (error) return alert('Error: ' + error.message);
+  document.getElementById('entry-title').value = '';
+  document.getElementById('entry-body').value = '';
+  loadJournal();
+}
+async function deleteJournal(id) {
+  if (!confirm('Delete this entry?')) return;
+  await sb.from('journal_entries').delete().eq('id', id);
+  loadJournal();
+}
+
+// ── PHOTOS ──
+async function loadPhotos() {
+  const { data, error } = await sb.from('photos').select('*').order('created_at', { ascending: false });
+  if (!error && data) { allPhotos = data; renderPhotos(); }
+}
+async function handlePhotoUpload(e) {
+  const files = Array.from(e.target.files);
+  const progress = document.getElementById('upload-progress');
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    progress.textContent = `Uploading ${i+1} of ${files.length}…`;
+    const ext = file.name.split('.').pop();
+    const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error: upErr } = await sb.storage.from(PHOTO_BUCKET).upload(path, file, { cacheControl: '3600', upsert: false });
+    if (upErr) { progress.textContent = 'Upload failed: ' + upErr.message; continue; }
+    const { data: urlData } = sb.storage.from(PHOTO_BUCKET).getPublicUrl(path);
+    const caption = file.name.replace(/\.[^.]+$/, '');
+    await sb.from('photos').insert({ url: urlData.publicUrl, caption, tag: 'general', storage_path: path, user_id: currentUser.id });
+  }
+  progress.textContent = files.length > 1 ? `${files.length} photos uploaded!` : 'Photo uploaded!';
+  setTimeout(() => { progress.textContent = ''; }, 3000);
+  e.target.value = '';
+  loadPhotos();
+}
+function renderPhotos() {
+  const grid = document.getElementById('photo-grid');
+  const empty = document.getElementById('photo-empty');
+  const filtered = activeFilter === 'all' ? allPhotos : allPhotos.filter(p => p.tag === activeFilter);
+  if (filtered.length === 0) { grid.innerHTML = ''; grid.appendChild(empty); empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  grid.innerHTML = filtered.map(p => `
+    <div class="photo-item" onclick="openLightbox('${p.id}')">
+      <img src="${p.url}" alt="${esc(p.caption)}" loading="lazy" />
+      <div class="photo-overlay">
+        <div class="photo-tag-label">${p.tag || ''}</div>
+        <div class="photo-caption">${esc(p.caption)}</div>
+      </div>
+      ${currentUser ? `<div class="photo-delete" onclick="deletePhoto(event,'${p.id}','${p.storage_path}')">✕</div>` : ''}
+    </div>`).join('');
+}
+async function deletePhoto(e, id, path) {
+  e.stopPropagation();
+  if (!confirm('Delete this photo?')) return;
+  await sb.storage.from(PHOTO_BUCKET).remove([path]);
+  await sb.from('photos').delete().eq('id', id);
+  loadPhotos();
+}
+function filterPhotos(tag, btn) {
+  activeFilter = tag;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderPhotos();
+}
+function openLightbox(id) {
+  const p = allPhotos.find(x => String(x.id) === String(id));
+  if (!p) return;
+  document.getElementById('lightbox-img').src = p.url;
+  document.getElementById('lightbox-caption').textContent = p.caption;
+  document.getElementById('lightbox').classList.add('open');
+}
+function closeLightbox(e) {
+  if (e.target === document.getElementById('lightbox')) document.getElementById('lightbox').classList.remove('open');
+}
+
+// ── HELPERS ──
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function formatDate(iso) {
+  return new Date(iso).toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
+}
+</script>
+</body>
+</html>
