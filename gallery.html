@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Photography — Haron Wahome</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --cream: #FAF6EF; --parchment: #F2EAD8; --warm-brown: #8B6240;
+    --deep-brown: #4A2E14; --terracotta: #C46A3A; --muted-gold: #C9943A;
+    --sage: #7A9178; --text-main: #2C1F0F; --text-muted: #7A6249;
+    --text-light: #A8916F; --border: rgba(139,98,64,0.18); --border-strong: rgba(139,98,64,0.35);
+  }
+  html { scroll-behavior: smooth; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--text-main); line-height: 1.7; }
+
+  /* NAV */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(250,246,239,0.95); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border); padding: 0 2rem;
+    display: flex; align-items: center; justify-content: space-between; height: 60px;
+  }
+  .nav-left { display: flex; align-items: center; gap: 1rem; }
+  .back-link { font-size: 13px; color: var(--text-muted); text-decoration: none; display: flex; align-items: center; gap: 6px; transition: color 0.2s; }
+  .back-link:hover { color: var(--terracotta); }
+  .nav-divider { width: 1px; height: 18px; background: var(--border); }
+  .nav-title { font-family: 'Lora', serif; font-size: 16px; font-weight: 600; color: var(--deep-brown); }
+  .nav-auth-btn { font-size: 12px; font-weight: 500; padding: 6px 16px; border-radius: 20px; border: 1.5px solid var(--border-strong); background: transparent; color: var(--warm-brown); cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+  .nav-auth-btn:hover { background: var(--parchment); }
+  .nav-auth-btn.logged-in { background: rgba(196,106,58,0.1); color: var(--terracotta); border-color: rgba(196,106,58,0.3); }
+
+  /* AUTH MODAL */
+  .auth-overlay { display: none; position: fixed; inset: 0; z-index: 999; background: rgba(44,31,15,0.6); backdrop-filter: blur(4px); align-items: center; justify-content: center; }
+  .auth-overlay.open { display: flex; }
+  .auth-box { background: #fff; border-radius: 14px; padding: 2.5rem 2rem; width: 100%; max-width: 380px; border: 1px solid var(--border); position: relative; }
+  .auth-box h2 { font-family: 'Lora', serif; font-size: 1.4rem; color: var(--deep-brown); margin-bottom: 0.3rem; }
+  .auth-box p { font-size: 13px; color: var(--text-muted); margin-bottom: 1.5rem; }
+  .auth-field { margin-bottom: 1rem; }
+  .auth-field label { display: block; font-size: 11px; font-weight: 500; color: var(--warm-brown); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.4rem; }
+  .auth-field input { width: 100%; border: 1px solid var(--border); border-radius: 7px; padding: 9px 13px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--text-main); background: var(--cream); outline: none; }
+  .auth-field input:focus { border-color: var(--border-strong); }
+  .auth-error { font-size: 12.5px; color: #c0392b; background: #fdf0ef; border: 1px solid #f5c6c2; border-radius: 6px; padding: 8px 12px; margin-bottom: 1rem; display: none; }
+  .auth-btn { width: 100%; background: var(--terracotta); color: #fff; border: none; border-radius: 7px; padding: 11px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; }
+  .auth-btn:hover { background: #b35e30; }
+  .auth-close { position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 18px; cursor: pointer; color: var(--text-muted); }
+
+  /* ADMIN BANNER */
+  .admin-banner { display: none; background: var(--terracotta); color: #fff; text-align: center; font-size: 12.5px; padding: 7px; }
+  .admin-banner.show { display: block; }
+
+  /* HERO */
+  .gallery-hero { padding: 60px 2rem 40px; text-align: center; background: var(--parchment); border-bottom: 1px solid var(--border); }
+  .gallery-hero .section-label { font-size: 11px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--terracotta); margin-bottom: 0.5rem; }
+  .gallery-hero h1 { font-family: 'Lora', serif; font-size: clamp(2rem,4vw,3rem); font-weight: 600; color: var(--deep-brown); margin-bottom: 0.8rem; }
+  .gallery-hero h1 em { font-style: italic; color: var(--terracotta); }
+  .gallery-hero p { font-size: 15px; color: var(--text-muted); max-width: 520px; margin: 0 auto; line-height: 1.8; }
+  .photo-count { display: inline-block; margin-top: 1rem; font-size: 12px; color: var(--text-light); background: rgba(139,98,64,0.08); border: 1px solid var(--border); border-radius: 20px; padding: 4px 14px; }
+
+  /* TOOLBAR */
+  .toolbar { padding: 1.5rem 2rem; max-width: 1300px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+
+  /* Upload zone */
+  .upload-zone { border: 2px dashed rgba(196,106,58,0.3); border-radius: 10px; background: rgba(196,106,58,0.04); padding: 1.2rem 2rem; text-align: center; cursor: pointer; transition: all 0.2s; position: relative; display: none; }
+  .upload-zone.show { display: block; }
+  .upload-zone:hover { border-color: var(--terracotta); background: rgba(196,106,58,0.07); }
+  .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .upload-zone p { font-size: 13px; color: var(--text-muted); }
+  .upload-zone strong { color: var(--deep-brown); font-size: 14px; }
+  .upload-progress { font-size: 12px; color: var(--terracotta); margin-top: 4px; min-height: 16px; }
+
+  /* Filters */
+  .filters { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .filter-btn { font-size: 12px; font-weight: 500; padding: 5px 14px; border-radius: 20px; background: #fff; color: var(--text-muted); border: 1px solid var(--border); cursor: pointer; transition: all 0.2s; font-family: 'DM Sans', sans-serif; }
+  .filter-btn:hover, .filter-btn.active { background: rgba(196,106,58,0.1); color: var(--terracotta); border-color: rgba(196,106,58,0.3); }
+
+  /* View toggle */
+  .view-toggle { display: flex; gap: 4px; }
+  .view-btn { width: 34px; height: 34px; border: 1px solid var(--border); background: #fff; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 15px; transition: all 0.2s; }
+  .view-btn.active { background: rgba(196,106,58,0.1); border-color: rgba(196,106,58,0.3); }
+
+  /* GRID */
+  .gallery-wrap { padding: 0 2rem 80px; max-width: 1300px; margin: 0 auto; }
+
+  .photo-grid-masonry { columns: 4; column-gap: 1rem; }
+  .photo-grid-masonry.cols-3 { columns: 3; }
+  .photo-grid-masonry.cols-2 { columns: 2; }
+
+  .photo-item { break-inside: avoid; margin-bottom: 1rem; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); position: relative; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; background: #fff; }
+  .photo-item:hover { transform: translateY(-3px); box-shadow: 0 8px 30px rgba(74,46,20,0.12); }
+  .photo-item img { display: block; width: 100%; height: auto; }
+  .photo-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(74,46,20,0.8) 0%, transparent 55%); opacity: 0; transition: opacity 0.25s; display: flex; flex-direction: column; justify-content: flex-end; padding: 1rem; }
+  .photo-item:hover .photo-overlay { opacity: 1; }
+  .photo-caption-text { font-size: 14px; color: #fff; font-family: 'Lora', serif; font-style: italic; }
+  .photo-tag-pill { display: inline-block; font-size: 10px; color: rgba(255,255,255,0.8); text-transform: uppercase; letter-spacing: 0.1em; background: rgba(255,255,255,0.15); border-radius: 10px; padding: 2px 8px; margin-bottom: 4px; }
+  .photo-delete { position: absolute; top: 8px; right: 8px; background: rgba(255,255,255,0.9); border: 1px solid var(--border); color: var(--text-muted); border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; opacity: 0; transition: opacity 0.2s; }
+  .photo-item:hover .photo-delete { opacity: 1; }
+  .photo-delete:hover { color: var(--terracotta); }
+  .photo-tag-edit { position: absolute; top: 8px; left: 8px; background: rgba(255,255,255,0.9); border: 1px solid var(--border); color: var(--text-muted); border-radius: 6px; padding: 3px 8px; font-size: 11px; cursor: pointer; opacity: 0; transition: opacity 0.2s; font-family: 'DM Sans', sans-serif; }
+  .photo-item:hover .photo-tag-edit { opacity: 1; }
+  .photo-tag-edit:hover { color: var(--terracotta); }
+
+  /* Tag selector popup */
+  .tag-popup { position: absolute; top: 36px; left: 8px; background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 6px; display: none; z-index: 10; box-shadow: 0 4px 16px rgba(74,46,20,0.1); }
+  .tag-popup.open { display: block; }
+  .tag-option { display: block; font-size: 12px; padding: 5px 10px; color: var(--text-muted); cursor: pointer; border-radius: 4px; white-space: nowrap; }
+  .tag-option:hover { background: rgba(196,106,58,0.08); color: var(--terracotta); }
+
+  /* Empty state */
+  .photo-empty { text-align: center; padding: 5rem 2rem; color: var(--text-light); }
+  .photo-empty .empty-icon { font-size: 48px; margin-bottom: 1rem; opacity: 0.35; }
+  .photo-empty h3 { font-family: 'Lora', serif; font-size: 1.2rem; color: var(--deep-brown); margin-bottom: 0.5rem; }
+  .photo-empty p { font-size: 14px; }
+
+  /* LIGHTBOX */
+  .lightbox { display: none; position: fixed; inset: 0; z-index: 500; background: rgba(44,31,15,0.95); align-items: center; justify-content: center; flex-direction: column; gap: 1rem; padding: 2rem; }
+  .lightbox.open { display: flex; }
+  .lightbox img { max-width: 90vw; max-height: 80vh; border-radius: 10px; object-fit: contain; border: 2px solid rgba(255,255,255,0.1); }
+  .lightbox-caption { color: rgba(255,255,255,0.7); font-family: 'Lora', serif; font-style: italic; }
+  .lightbox-nav { display: flex; gap: 1rem; align-items: center; }
+  .lightbox-btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.8); padding: 8px 20px; border-radius: 20px; cursor: pointer; font-size: 13px; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+  .lightbox-btn:hover { background: rgba(255,255,255,0.2); }
+  .lightbox-close { position: absolute; top: 1.2rem; right: 1.5rem; }
+  .lightbox-counter { font-size: 12px; color: rgba(255,255,255,0.4); }
+
+  /* Loading */
+  .loading { text-align: center; padding: 4rem; color: var(--text-light); font-style: italic; }
+
+  @media (max-width: 1024px) { .photo-grid-masonry { columns: 3; } }
+  @media (max-width: 768px) { .photo-grid-masonry { columns: 2; } .toolbar { flex-direction: column; align-items: flex-start; } }
+  @media (max-width: 480px) { .photo-grid-masonry { columns: 1; } }
+</style>
+</head>
+<body>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+  <div class="auth-box">
+    <button class="auth-close" onclick="closeAuth()">✕</button>
+    <h2>Owner Login</h2>
+    <p>Only Haron can upload and manage photos.</p>
+    <div class="auth-error" id="auth-error"></div>
+    <div class="auth-field"><label>Email</label><input type="email" id="auth-email" placeholder="your@email.com" /></div>
+    <div class="auth-field"><label>Password</label><input type="password" id="auth-password" placeholder="••••••••" /></div>
+    <button class="auth-btn" onclick="doLogin()">Sign In</button>
+  </div>
+</div>
+
+<!-- ADMIN BANNER -->
+<div class="admin-banner" id="admin-banner">
+  ✏️ You are logged in — upload and manage your photos freely.
+  <button onclick="doLogout()" style="margin-left:1rem;background:rgba(255,255,255,0.2);border:none;color:#fff;padding:3px 12px;border-radius:10px;cursor:pointer;font-size:12px;">Log out</button>
+</div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-left">
+    <a href="index.html" class="back-link">← Back to Portfolio</a>
+    <div class="nav-divider"></div>
+    <span class="nav-title">Photography</span>
+  </div>
+  <button class="nav-auth-btn" id="nav-auth-btn" onclick="openAuth()">Owner Login</button>
+</nav>
+
+<!-- HERO -->
+<div class="gallery-hero">
+  <div class="section-label">Photography</div>
+  <h1>Through <em>My Lens</em></h1>
+  <p>Medicine sharpens the eye for detail. Here is what I see when I step away from the wards — moments, places, and quiet observations captured in light.</p>
+  <div class="photo-count" id="photo-count">Loading…</div>
+</div>
+
+<!-- UPLOAD ZONE (admin only) -->
+<div style="max-width:1300px;margin:0 auto;padding:1.5rem 2rem 0;">
+  <div class="upload-zone" id="upload-zone">
+    <input type="file" accept="image/*" multiple id="photo-input" onchange="handlePhotoUpload(event)" />
+    <strong>📷 Add photographs</strong>
+    <p>Click or drag images here — JPG, PNG, WEBP, multiple files supported</p>
+    <div class="upload-progress" id="upload-progress"></div>
+  </div>
+</div>
+
+<!-- TOOLBAR -->
+<div class="toolbar">
+  <div class="filters">
+    <button class="filter-btn active" onclick="filterPhotos('all',this)">All</button>
+    <button class="filter-btn" onclick="filterPhotos('nature',this)">Nature</button>
+    <button class="filter-btn" onclick="filterPhotos('clinical',this)">Clinical</button>
+    <button class="filter-btn" onclick="filterPhotos('travel',this)">Travel</button>
+    <button class="filter-btn" onclick="filterPhotos('music',this)">Music</button>
+    <button class="filter-btn" onclick="filterPhotos('people',this)">People</button>
+    <button class="filter-btn" onclick="filterPhotos('animals',this)">Animals</button>
+
+  </div>
+  <div style="display:flex;align-items:center;gap:1rem;">
+    <span style="font-size:12px;color:var(--text-light);">Columns:</span>
+    <div class="view-toggle">
+      <button class="view-btn" onclick="setCols(2,this)" title="2 columns">▦</button>
+      <button class="view-btn active" onclick="setCols(4,this)" title="4 columns">⊞</button>
+      <button class="view-btn" onclick="setCols(3,this)" title="3 columns">▤</button>
+    </div>
+  </div>
+</div>
+
+<!-- GALLERY GRID -->
+<div class="gallery-wrap">
+  <div class="photo-grid-masonry" id="photo-grid">
+    <div class="loading">Loading your gallery…</div>
+  </div>
+</div>
+
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox(event)">
+  <button class="lightbox-btn lightbox-close" onclick="document.getElementById('lightbox').classList.remove('open')">✕ Close</button>
+  <img id="lightbox-img" src="" alt="" />
+  <div class="lightbox-caption" id="lightbox-caption"></div>
+  <div class="lightbox-nav">
+    <button class="lightbox-btn" onclick="lightboxNav(-1)">← Prev</button>
+    <span class="lightbox-counter" id="lightbox-counter"></span>
+    <button class="lightbox-btn" onclick="lightboxNav(1)">Next →</button>
+  </div>
+</div>
+
+<script>
+// ── CONFIG — same keys as index.html ──
+const SUPABASE_URL = 'https://pltmyhgzjbxpmyawijvb.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsdG15aGd6amJ4cG15YXdpanZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5NzY5NTQsImV4cCI6MjA5MjU1Mjk1NH0.khlwleU8BoWhsHaqFNjIkuoRZJSk1lH4rZ--7IQdq7E';
+
+const PHOTO_BUCKET = 'photos';
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let currentUser = null;
+let allPhotos = [];
+let filteredPhotos = [];
+let activeFilter = 'all';
+let lightboxIndex = 0;
+
+const TAGS = ['all','nature','clinical','travel','music','people','animals'];
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) setAdmin(session.user);
+  sb.auth.onAuthStateChange((_e, s) => { if (s) setAdmin(s.user); else clearAdmin(); });
+  await loadPhotos();
+  document.addEventListener('keydown', e => {
+    const lb = document.getElementById('lightbox');
+    if (!lb.classList.contains('open')) return;
+    if (e.key === 'ArrowLeft') lightboxNav(-1);
+    if (e.key === 'ArrowRight') lightboxNav(1);
+    if (e.key === 'Escape') lb.classList.remove('open');
+  });
+});
+
+// ── AUTH ──
+function openAuth() { document.getElementById('auth-overlay').classList.add('open'); }
+function closeAuth() { document.getElementById('auth-overlay').classList.remove('open'); }
+async function doLogin() {
+  const email = document.getElementById('auth-email').value.trim();
+  const pass = document.getElementById('auth-password').value;
+  const errEl = document.getElementById('auth-error');
+  errEl.style.display = 'none';
+  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; }
+  else closeAuth();
+}
+async function doLogout() { await sb.auth.signOut(); }
+function setAdmin(user) {
+  currentUser = user;
+  document.getElementById('admin-banner').classList.add('show');
+  document.getElementById('nav-auth-btn').textContent = 'Logged in ✓';
+  document.getElementById('nav-auth-btn').classList.add('logged-in');
+  document.getElementById('nav-auth-btn').onclick = doLogout;
+  document.getElementById('upload-zone').classList.add('show');
+  renderPhotos();
+}
+function clearAdmin() {
+  currentUser = null;
+  document.getElementById('admin-banner').classList.remove('show');
+  document.getElementById('nav-auth-btn').textContent = 'Owner Login';
+  document.getElementById('nav-auth-btn').classList.remove('logged-in');
+  document.getElementById('nav-auth-btn').onclick = openAuth;
+  document.getElementById('upload-zone').classList.remove('show');
+  renderPhotos();
+}
+
+// ── PHOTOS ──
+async function loadPhotos() {
+  const { data, error } = await sb.from('photos').select('*').order('created_at', { ascending: false });
+  if (!error && data) {
+    allPhotos = data;
+    updateCount();
+    renderPhotos();
+  }
+}
+
+function updateCount() {
+  const el = document.getElementById('photo-count');
+  el.textContent = allPhotos.length === 0 ? 'No photos yet' : `${allPhotos.length} photograph${allPhotos.length === 1 ? '' : 's'}`;
+}
+
+async function handlePhotoUpload(e) {
+  const files = Array.from(e.target.files);
+  const progress = document.getElementById('upload-progress');
+  let uploaded = 0;
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    progress.textContent = `Uploading ${i+1} of ${files.length}…`;
+    const ext = file.name.split('.').pop().toLowerCase();
+    const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error: upErr } = await sb.storage.from(PHOTO_BUCKET).upload(path, file, { cacheControl: '3600', upsert: false });
+    if (upErr) { progress.textContent = 'Upload failed: ' + upErr.message; continue; }
+    const { data: urlData } = sb.storage.from(PHOTO_BUCKET).getPublicUrl(path);
+    const caption = file.name.replace(/\.[^.]+$/, '');
+    const { error: dbErr } = await sb.from('photos').insert({ url: urlData.publicUrl, caption, tag: 'all', storage_path: path, user_id: currentUser.id });
+    if (!dbErr) uploaded++;
+  }
+  progress.textContent = uploaded > 0 ? `${uploaded} photo${uploaded>1?'s':''} uploaded!` : 'Upload failed.';
+  setTimeout(() => { progress.textContent = ''; }, 3000);
+  e.target.value = '';
+  await loadPhotos();
+}
+
+function renderPhotos() {
+  const grid = document.getElementById('photo-grid');
+  filteredPhotos = activeFilter === 'all' ? allPhotos : allPhotos.filter(p => p.tag === activeFilter);
+  if (filteredPhotos.length === 0) {
+    grid.innerHTML = `<div class="photo-empty" style="grid-column:1/-1">
+      <div class="empty-icon">📷</div>
+      <h3>${activeFilter === 'all' ? 'No photos yet' : 'No photos in this category'}</h3>
+      <p>${currentUser && activeFilter === 'all' ? 'Use the upload area above to add your first photograph.' : 'Check back soon.'}</p>
+    </div>`; return;
+  }
+  grid.innerHTML = filteredPhotos.map((p, i) => `
+    <div class="photo-item" onclick="openLightbox(${i})">
+      <img src="${p.url}" alt="${esc(p.caption)}" loading="lazy" />
+      <div class="photo-overlay">
+        ${p.tag && p.tag !== 'all' ? `<span class="photo-tag-pill">${p.tag}</span>` : ''}
+        <div class="photo-caption-text">${esc(p.caption)}</div>
+      </div>
+      ${currentUser ? `
+        <div class="photo-tag-edit" onclick="toggleTagPopup(event,'popup-${p.id}')">🏷 Tag</div>
+        <div class="tag-popup" id="popup-${p.id}">
+          ${TAGS.filter(t=>t!=='all').map(t=>`<span class="tag-option" onclick="setTag(event,'${p.id}','${t}')">${t}</span>`).join('')}
+        </div>
+        <div class="photo-delete" onclick="deletePhoto(event,'${p.id}','${p.storage_path}')">✕</div>
+      ` : ''}
+    </div>`).join('');
+}
+
+function filterPhotos(tag, btn) {
+  activeFilter = tag;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderPhotos();
+}
+
+function setCols(n, btn) {
+  const grid = document.getElementById('photo-grid');
+  grid.className = 'photo-grid-masonry';
+  if (n === 2) grid.classList.add('cols-2');
+  if (n === 3) grid.classList.add('cols-3');
+  document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+async function setTag(e, id, tag) {
+  e.stopPropagation();
+  document.querySelectorAll('.tag-popup').forEach(p => p.classList.remove('open'));
+  await sb.from('photos').update({ tag }).eq('id', id);
+  await loadPhotos();
+}
+
+function toggleTagPopup(e, popupId) {
+  e.stopPropagation();
+  const popup = document.getElementById(popupId);
+  const isOpen = popup.classList.contains('open');
+  document.querySelectorAll('.tag-popup').forEach(p => p.classList.remove('open'));
+  if (!isOpen) popup.classList.add('open');
+}
+
+async function deletePhoto(e, id, path) {
+  e.stopPropagation();
+  if (!confirm('Delete this photo?')) return;
+  await sb.storage.from(PHOTO_BUCKET).remove([path]);
+  await sb.from('photos').delete().eq('id', id);
+  await loadPhotos();
+}
+
+// ── LIGHTBOX with prev/next ──
+function openLightbox(index) {
+  lightboxIndex = index;
+  showLightboxPhoto();
+  document.getElementById('lightbox').classList.add('open');
+}
+function showLightboxPhoto() {
+  const p = filteredPhotos[lightboxIndex];
+  if (!p) return;
+  document.getElementById('lightbox-img').src = p.url;
+  document.getElementById('lightbox-caption').textContent = p.caption;
+  document.getElementById('lightbox-counter').textContent = `${lightboxIndex+1} / ${filteredPhotos.length}`;
+}
+function lightboxNav(dir) {
+  lightboxIndex = (lightboxIndex + dir + filteredPhotos.length) % filteredPhotos.length;
+  showLightboxPhoto();
+}
+function closeLightbox(e) {
+  if (e.target === document.getElementById('lightbox')) document.getElementById('lightbox').classList.remove('open');
+}
+document.addEventListener('click', () => document.querySelectorAll('.tag-popup').forEach(p => p.classList.remove('open')));
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+</script>
+</body>
+</html>
