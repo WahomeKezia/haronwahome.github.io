@@ -476,7 +476,7 @@
 </section>
 
 <footer>
-  <p>Crafted with care · <strong>Haron Wahome</strong> · Medical Student, Researcher &amp; Musician · © 2025</p>
+  <p>Crafted with care · <strong>Haron Wahome</strong> · Medical Student, Researcher &amp; Musician · © <span id="footer-year"></span></p>
 </footer>
 
 <script>
@@ -509,6 +509,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.querySelector(a.getAttribute('href'))?.scrollIntoView({ behavior: 'smooth' });
     });
   });
+  document.getElementById('footer-year').textContent = new Date().getFullYear();
 });
 
 // ── AUTH ──
@@ -627,33 +628,36 @@ async function loadPhotos() {
 async function handlePhotoUpload(e) {
   const files = Array.from(e.target.files);
   const progress = document.getElementById('upload-progress');
+  let uploaded = 0;
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     progress.textContent = `Uploading ${i+1} of ${files.length}…`;
-    const ext = file.name.split('.').pop();
+    const ext = file.name.split('.').pop().toLowerCase();
     const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
     const { error: upErr } = await sb.storage.from(PHOTO_BUCKET).upload(path, file, { cacheControl: '3600', upsert: false });
     if (upErr) { progress.textContent = 'Upload failed: ' + upErr.message; continue; }
     const { data: urlData } = sb.storage.from(PHOTO_BUCKET).getPublicUrl(path);
     const caption = file.name.replace(/\.[^.]+$/, '');
-    await sb.from('photos').insert({ url: urlData.publicUrl, caption, tag: 'general', storage_path: path, user_id: currentUser.id });
+    const { error: dbErr } = await sb.from('photos').insert({ url: urlData.publicUrl, caption, tag: 'all', storage_path: path, user_id: currentUser.id });
+    if (!dbErr) uploaded++;
   }
-  progress.textContent = files.length > 1 ? `${files.length} photos uploaded!` : 'Photo uploaded!';
+  progress.textContent = uploaded > 1 ? `${uploaded} photos uploaded!` : uploaded === 1 ? 'Photo uploaded!' : 'Upload failed.';
   setTimeout(() => { progress.textContent = ''; }, 3000);
   e.target.value = '';
-  loadPhotos();
+  await loadPhotos();
 }
 function renderPhotos() {
   const grid = document.getElementById('photo-grid');
   const empty = document.getElementById('photo-empty');
-  const filtered = activeFilter === 'all' ? allPhotos : allPhotos.filter(p => p.tag === activeFilter);
+  // "all" filter shows everything; other filters match the tag column
+  const filtered = activeFilter === 'all' ? allPhotos : allPhotos.filter(p => (p.tag || 'all') === activeFilter);
   if (filtered.length === 0) { grid.innerHTML = ''; grid.appendChild(empty); empty.style.display = 'block'; return; }
   empty.style.display = 'none';
   grid.innerHTML = filtered.map(p => `
     <div class="photo-item" onclick="openLightbox('${p.id}')">
       <img src="${p.url}" alt="${esc(p.caption)}" loading="lazy" />
       <div class="photo-overlay">
-        <div class="photo-tag-label">${p.tag || ''}</div>
+        <div class="photo-tag-label">${p.tag && p.tag !== 'all' ? p.tag : ''}</div>
         <div class="photo-caption">${esc(p.caption)}</div>
       </div>
       ${currentUser ? `<div class="photo-delete" onclick="deletePhoto(event,'${p.id}','${p.storage_path}')">✕</div>` : ''}
@@ -683,7 +687,6 @@ function closeLightbox(e) {
   if (e.target === document.getElementById('lightbox')) document.getElementById('lightbox').classList.remove('open');
 }
 
-// ── HELPERS ──
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
